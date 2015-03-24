@@ -18,12 +18,12 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imageCircularBuffer.cpp">
+    <ClCompile Include="frameInfoStructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="imageCircularBuffer.h">
+    <ClInclude Include="frameInfoStructure.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
