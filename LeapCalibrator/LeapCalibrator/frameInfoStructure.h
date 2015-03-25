@@ -4,13 +4,17 @@
 #define PREVIOUS 1
 #define IMG_WIDTH 640
 #define IMG_HEIGHT 240
-enum image_type {LEFT_IMG, RIGHT_IMG, LEFT_DIFF, RIGHT_DIFF};
+enum image_type {LEFT_IMG, RIGHT_IMG, LEFT_DIFF, RIGHT_DIFF, THRESH, HIST1, HIST2};
 
 struct frameInfoContainer {
 	cv::Mat leftImage;
 	cv::Mat rightImage;
 	cv::Mat leftDifference;
 	cv::Mat rightDifference;
+
+	cv::Mat temp_threshold;
+	cv::Mat temp_thresh_hist;
+	cv::Mat temp_diff_hist;
 };
 
 class frameInfoStructure {

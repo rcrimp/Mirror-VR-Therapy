@@ -1,3 +1,4 @@
+#include <opencv/cv.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "frameInfoStructure.h"
@@ -11,12 +12,67 @@ inline int mod(int i, int n){
 	return (i % n + n) % n;
 }
 
+cv::Mat absDiffEx(cv::Mat a, cv::Mat b){
+	cv::Mat diff = cv::Mat(cv::Size(a.cols, a.rows), CV_8UC1);
+	cv::absdiff(a, b, diff);
+	return diff;
+}
+
+cv::Mat thresholdEx(cv::Mat a){
+	cv::Mat thresh = cv::Mat(cv::Size(a.cols, a.rows), CV_8UC1);
+	cv::threshold(a, thresh, 40, 255, cv::THRESH_BINARY);
+	return thresh;
+}
+
+cv::Mat calculateHist(const cv::Mat img) {
+	int histSize = 256;
+	float range[] = { 0, 256 };
+	const float* histRange = { range };
+
+	bool uniform = true;
+	bool accumulate = false;
+
+	cv::Mat hist;
+	const int *channels = new int[]{ 1 };
+	cv::calcHist(&img, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange, uniform, accumulate);
+
+	/* histogram to image */
+	int hist_w = 640; int hist_h = 240;
+	int bin_w = cvRound((double)hist_w / histSize);
+	cv::Mat histImage(hist_h, hist_w, CV_8UC1, cv::Scalar(0, 0, 0));
+
+	float max = 0.0f;
+	for (int i = 0; i < histSize; i++){
+		max = (max > hist.at<float>(i) ? max : hist.at<float>(i));
+	}
+	max /= 10;
+
+	for (int i = 0; i < histSize; i++){
+		cv::line(histImage,
+			cv::Point((bin_w * i), 239 - hist_h*(hist.at<float>(i) / max)),
+			cv::Point((bin_w * i), 239),
+			cv::Scalar(255, 0, 0),
+			1, 8, 0);
+	}
+
+	/*normalize(hist, hist, 0, histImage.rows, cv::NORM_MINMAX, -1, cv::Mat());
+	for (int i = 1; i < histSize; i++)
+	{
+	cv::line(histImage,
+	cv::Point(bin_w*(i - 1), (hist_h - cvRound(hist.at<float>(i - 1)) )),
+	cv::Point(bin_w*(i), (hist_h - cvRound(hist.at<float>(i)))),
+	cv::Scalar(255, 0, 0), 2, 8, 0);
+	}*/
+
+	return histImage;
+}
+
 frameInfoStructure::frameInfoStructure(int s){
 	size = s;
 	current = 0;
 	totalFrameCount = 0;
 	buffer = new frameInfoContainer[size];
-	
+
 	/* init the error mat */
 	errorMat = cv::Mat(cv::Size(IMG_WIDTH, IMG_HEIGHT), CV_8UC1);
 	errorMat.setTo(cv::Scalar(0, 0, 0));
@@ -30,17 +86,20 @@ void frameInfoStructure::addFrame(cv::Mat leftImage, cv::Mat rightImage){
 	frameInfoContainer container;
 	container.leftImage = leftImage;
 	container.rightImage = rightImage;
-	
+
 	if (totalFrameCount > 1) { // if a previous frame exists calculate the diff
-		cv::Mat leftDifference = cv::Mat(cv::Size(leftImage.cols, leftImage.rows), CV_8UC1);
-		cv::Mat rightDifference = cv::Mat(cv::Size(rightImage.cols, rightImage.rows), CV_8UC1);
-		cv::absdiff(leftImage, getImage(0, LEFT_IMG), leftDifference);
-		cv::absdiff(rightImage, getImage(0, RIGHT_IMG), rightDifference);
-		container.leftDifference = leftDifference;
-		container.rightDifference = rightDifference;
-	} else {
+		container.leftDifference = absDiffEx(leftImage, getImage(0, LEFT_IMG));
+		container.rightDifference = absDiffEx(rightImage, getImage(0, RIGHT_IMG));
+		container.temp_threshold = thresholdEx(container.leftDifference);
+		container.temp_diff_hist = calculateHist(container.leftDifference);
+		container.temp_thresh_hist = calculateHist(container.temp_threshold);
+	}
+	else {
 		container.leftDifference = errorMat;
 		container.rightDifference = errorMat;
+		container.temp_threshold = errorMat;
+		container.temp_diff_hist = errorMat;
+		container.temp_thresh_hist = errorMat;
 	}
 
 	buffer[mod(++current, size)] = container;
@@ -60,15 +119,13 @@ cv::Mat frameInfoStructure::getImage(int history, image_type type){
 
 	frameInfoContainer target = buffer[mod(current - history, size)];
 	switch (type) {
-	case LEFT_IMG:
-		return target.leftImage;
-	case RIGHT_IMG:
-		return target.rightImage;
-	case LEFT_DIFF:
-		return target.leftDifference;
-	case RIGHT_DIFF:
-		return target.rightDifference;
-	default:
-		return errorMat;
+	case LEFT_IMG:	 return target.leftImage;
+	case RIGHT_IMG:	 return target.rightImage;
+	case LEFT_DIFF:	 return target.leftDifference;
+	case RIGHT_DIFF: return target.rightDifference;
+	case HIST1:	 return target.temp_diff_hist;
+	case HIST2:	 return target.temp_thresh_hist;
+	case THRESH: return target.temp_threshold;
+	default: return errorMat;
 	}
 }
