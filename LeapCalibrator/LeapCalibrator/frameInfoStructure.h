@@ -15,6 +15,7 @@ struct frameInfoContainer {
 	cv::Mat temp_threshold;
 	cv::Mat temp_thresh_hist;
 	cv::Mat temp_diff_hist;
+	int thresh_sum;
 };
 
 class frameInfoStructure {
@@ -33,6 +34,7 @@ public:
 	int getSize();
 	void addFrame(cv::Mat left, cv::Mat right);
 
+	frameInfoContainer getContainer(int history_steps);
 	cv::Mat getImage(int history_steps, image_type type);
 	/* 	t = {0, -1, ... , -(size-1)} = {top, next, ... , last} */
 };

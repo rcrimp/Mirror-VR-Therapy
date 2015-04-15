@@ -24,9 +24,9 @@ cv::Mat thresholdEx(cv::Mat a){
 	return thresh;
 }
 
-cv::Mat calculateHist(const cv::Mat img) {
-	int histSize = 256;
-	float range[] = { 0, 256 };
+cv::Mat calculateHist(const cv::Mat img, int size) {
+	int histSize = size;
+	float range[] = { 0, size };
 	const float* histRange = { range };
 
 	bool uniform = true;
@@ -91,10 +91,10 @@ void frameInfoStructure::addFrame(cv::Mat leftImage, cv::Mat rightImage){
 		container.leftDifference = absDiffEx(leftImage, getImage(0, LEFT_IMG));
 		container.rightDifference = absDiffEx(rightImage, getImage(0, RIGHT_IMG));
 		container.temp_threshold = thresholdEx(container.leftDifference);
-		container.temp_diff_hist = calculateHist(container.leftDifference);
-		container.temp_thresh_hist = calculateHist(container.temp_threshold);
-	}
-	else {
+		container.temp_diff_hist = calculateHist(container.leftDifference, 256);
+		container.temp_thresh_hist = calculateHist(container.temp_threshold, 256);
+		container.thresh_sum = (int)cv::sum(container.temp_thresh_hist).val[0] - 126225;
+	} else {
 		container.leftDifference = errorMat;
 		container.rightDifference = errorMat;
 		container.temp_threshold = errorMat;
@@ -105,6 +105,7 @@ void frameInfoStructure::addFrame(cv::Mat leftImage, cv::Mat rightImage){
 	buffer[mod(++current, size)] = container;
 	totalFrameCount++;
 }
+
 
 /* returns the requested frame */
 /* history determines how far back in the past the returned frame is
@@ -128,4 +129,11 @@ cv::Mat frameInfoStructure::getImage(int history, image_type type){
 	case THRESH: return target.temp_threshold;
 	default: return errorMat;
 	}
+}
+
+frameInfoContainer frameInfoStructure::getContainer(int history){
+	if (history >= totalFrameCount || history >= size) {
+		history = 0;
+	}
+	return buffer[mod(current - history, size)];
 }
